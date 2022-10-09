@@ -1,0 +1,22 @@
+{
+  "name": "servidor",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "Servidor goWaiter, utilizando express e sequelize",
+  "main": "server.js",
+  "scripts": {
+    "dev": "nodemon run",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Gabriel Scarpelin e Carlos Eduardo",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.1",
+    "mysql2": "^2.3.3",
+    "sequelize": "^6.24.0",
+    "sequelize-cli": "^6.5.1"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.20"
+  }
+}
