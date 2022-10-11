@@ -34,6 +34,10 @@ const Restaurante = db.define('Restaurantes', {
     hora_fechar: {
         type: DataTypes.TIME,
         allowNull: false,
+    },
+    CEP: {
+        type: DataTypes.STRING,
+        allowNull: false
     }
 
 })
