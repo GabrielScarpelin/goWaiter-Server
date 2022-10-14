@@ -38,6 +38,10 @@ const Restaurante = db.define('Restaurantes', {
     CEP: {
         type: DataTypes.STRING,
         allowNull: false
+    },
+    uri_foto_restaurante: {
+        type: DataTypes.STRING,
+        allowNull: false
     }
 
 })

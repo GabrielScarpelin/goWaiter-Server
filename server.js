@@ -16,15 +16,47 @@ function formatarEnderecoParaUrl(endereco){
 
 import axios from 'axios'
 import express, { json } from 'express'
+import multer from 'multer'
+import formidableMiddleware from 'express-formidable'
+
+
+const storageUser = multer.diskStorage({
+    destination: (req, file, cb)=>{
+        cb(null, '/upload/users/')
+    },
+    filename: function (req, file, cb){
+        cb(null, Date.now()+'-'+file.originalname)
+    }
+})
+const storagePrato = multer.diskStorage({
+    destination: (req, file, cb)=>{
+        cb(null, 'upload/pratos/')
+    },
+    filename: function (req, file, cb){
+        cb(null, Date.now()+'-'+file.originalname)
+    }
+})
+const storageRestaurante = multer.diskStorage({
+    destination: (req, file, cb)=>{
+        cb(null, 'upload/restaurantes/')
+    },
+    filename: function (req, file, cb){
+        cb(null, Date.now()+'-'+file.originalname)
+    }
+})
 const app = express()
+
 import {Mesa, Pedido, Prato_Pedido, Prato, Restaurante, Usuario} from './Models/index.js'
 import { Op, Sequelize, where } from 'sequelize'
 
 app.use(express.json())
-app.use(express.urlencoded({extended: true}))
+app.use('/upload', express.static('./upload'))
+
+
 app.get('/signin:email:senha', (request, response, next)=>{
     response.json(['empty'])
 })
+
 app.post('/cadastrarUsuario', async (req, res)=>{
     const usuario = await Usuario.create({
         nome: req.body.nome,
@@ -44,7 +76,10 @@ app.post('/cadastrarUsuario', async (req, res)=>{
         })
     }
 })
-app.post('/cadastrarRestaurante', async (req, res)=>{
+const upload = multer({ storage: storageRestaurante })
+
+app.post('/cadastrarRestaurante',upload.single('foto_restaurante'), async (req, res)=>{
+    const fileName = req.file.filename
     const enderecoUrlFormated = formatarEnderecoParaUrl(req.body.endereco)
     const url = `https://geocode.search.hereapi.com/v1/geocode?q=${enderecoUrlFormated}&apiKey=1rdJexgz_WchXIC95dii3eCEtl2sUAhnCK6pj3Z92dM`;
     const informacoesEndereco = await axios.get(url).then(response => response.data)
@@ -57,7 +92,8 @@ app.post('/cadastrarRestaurante', async (req, res)=>{
         mesas_total: req.body.qtd_mesas,
         hora_abertura: `${req.body.hora_abertura}:${req.body.minuto_abertura}:00`,
         hora_fechar: `${req.body.hora_fechar}:${req.body.minuto_fechar}:00`,
-        CEP
+        CEP,
+        uri_foto_restaurante: `./upload/restaurantes/${fileName}`
     })
     res.json(restaurante)
 })
@@ -68,6 +104,7 @@ app.get('/restaurantes/:lat,:long', async (req, res)=>{
             'id',
             'nome',
             'endereco',
+            'uri_foto_restaurante',
             [Sequelize.literal(`(6335*2*asin(sqrt(SIN(RADIANS((latitude-${req.params.lat})/2))*SIN(RADIANS((latitude-${req.params.lat})/2)) + (cos(radians(latitude)) * cos(radians(${req.params.lat})) * (sin(radians((longitude-${req.params.long})/2)) * sin(radians((longitude-${req.params.long})/2)))))))`), 'distance'],
         ],
         order: Sequelize.col('distance'),
