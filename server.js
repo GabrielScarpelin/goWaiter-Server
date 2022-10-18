@@ -51,29 +51,63 @@ import { Op, Sequelize, where } from 'sequelize'
 
 app.use(express.json())
 app.use('/upload', express.static('./upload'))
+app.use(express.urlencoded())
 
-
-app.get('/signin:email:senha', (request, response, next)=>{
-    response.json(['empty'])
+app.post('/signin', async (request, response, next)=>{
+    try {
+        const searchUser = await Usuario.findOne({
+            where: {
+                email: request.body.email
+            }
+        })
+        if (searchUser){
+            const usuario = searchUser.get()
+            if (usuario.email == request.body.email && usuario.senha == request.body.senha){
+                response.json({logged: true, erro: false, user: usuario})
+            }
+            else{
+                response.json({logged: false, erro: false})
+            }
+        }
+        else{
+            response.json({logged: false, erro: false})
+        }
+    }
+    catch(e){
+        response.json({logged: false, erro: true})
+    }
 })
 
+
 app.post('/cadastrarUsuario', async (req, res)=>{
-    const usuario = await Usuario.create({
-        nome: req.body.nome,
-        email: req.body.email,
-        telefone: req.body.telefone,
-        senha: req.body.senha
+    const hasUser = await Usuario.findAll({
+        where: {
+            email: req.body.email
+        }
     })
-    console.log(usuario)
-    if (usuario){
-        res.json({
-            success: true
-        })
+    if (hasUser){
+        res.json({created: false, duplicate: true})
     }
     else {
-        res.json({
-            success: false
+        const usuario = await Usuario.create({
+            nome: req.body.nome,
+            email: req.body.email,
+            telefone: req.body.telefone,
+            senha: req.body.senha
         })
+        console.log(usuario)
+        if (usuario){
+            res.json({
+                created: true,
+                duplicate: false
+            })
+        }
+        else {
+            res.json({
+                created: false,
+                duplicate: false
+            })
+        }
     }
 })
 const upload = multer({ storage: storageRestaurante })
