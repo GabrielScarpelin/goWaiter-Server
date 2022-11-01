@@ -42,6 +42,10 @@ const Restaurante = db.define('Restaurantes', {
     uri_foto_restaurante: {
         type: DataTypes.STRING,
         allowNull: false
+    },
+    categoria_principal: {
+        type: DataTypes.STRING,
+        allowNull: false
     }
 
 })

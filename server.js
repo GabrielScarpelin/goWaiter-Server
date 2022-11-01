@@ -17,12 +17,11 @@ function formatarEnderecoParaUrl(endereco){
 import axios from 'axios'
 import express, { json } from 'express'
 import multer from 'multer'
-import formidableMiddleware from 'express-formidable'
-
+import cors from 'cors'
 
 const storageUser = multer.diskStorage({
     destination: (req, file, cb)=>{
-        cb(null, '/upload/users/')
+        cb(null, 'upload/users/')
     },
     filename: function (req, file, cb){
         cb(null, Date.now()+'-'+file.originalname)
@@ -52,6 +51,7 @@ import { Op, Sequelize, where } from 'sequelize'
 app.use(express.json())
 app.use('/upload', express.static('./upload'))
 app.use(express.urlencoded())
+app.use(cors())
 
 app.post('/signin', async (request, response, next)=>{
     try {
@@ -78,14 +78,15 @@ app.post('/signin', async (request, response, next)=>{
     }
 })
 
-
-app.post('/cadastrarUsuario', async (req, res)=>{
+const uploadUser = multer({ storage: storageUser })
+app.post('/cadastrarUsuario', uploadUser.single('foto_usuario'), async (req, res)=>{
+    const fileName = req.file.filename
     const hasUser = await Usuario.findAll({
         where: {
             email: req.body.email
         }
     })
-    if (hasUser){
+    if (hasUser.length > 0){
         res.json({created: false, duplicate: true})
     }
     else {
@@ -93,9 +94,9 @@ app.post('/cadastrarUsuario', async (req, res)=>{
             nome: req.body.nome,
             email: req.body.email,
             telefone: req.body.telefone,
-            senha: req.body.senha
+            senha: req.body.senha,
+            uri_foto_usuario: `/upload/users/${fileName}`
         })
-        console.log(usuario)
         if (usuario){
             res.json({
                 created: true,
@@ -127,23 +128,63 @@ app.post('/cadastrarRestaurante',upload.single('foto_restaurante'), async (req, 
         hora_abertura: `${req.body.hora_abertura}:${req.body.minuto_abertura}:00`,
         hora_fechar: `${req.body.hora_fechar}:${req.body.minuto_fechar}:00`,
         CEP,
-        uri_foto_restaurante: `./upload/restaurantes/${fileName}`
+        uri_foto_restaurante: `/upload/restaurantes/${fileName}`,
+        categoria_principal: req.body.categoria
     })
     res.json(restaurante)
 })
-app.get('/restaurantes/:lat,:long', async (req, res)=>{
-    const moreProximitySort = await Restaurante.findAll({
 
-        attributes: [
-            'id',
-            'nome',
-            'endereco',
-            'uri_foto_restaurante',
-            [Sequelize.literal(`(6335*2*asin(sqrt(SIN(RADIANS((latitude-${req.params.lat})/2))*SIN(RADIANS((latitude-${req.params.lat})/2)) + (cos(radians(latitude)) * cos(radians(${req.params.lat})) * (sin(radians((longitude-${req.params.long})/2)) * sin(radians((longitude-${req.params.long})/2)))))))`), 'distance'],
-        ],
-        order: Sequelize.col('distance'),
-        having: Sequelize.literal(`distance <= ${req.query.max || 10}`)
-    })
-    res.json(moreProximitySort)
+
+
+
+
+app.get('/restaurantes/:lat,:long', async (req, res)=>{
+    let restaurantesList
+    if (req.query.sortByCategory){
+        restaurantesList = await Restaurante.findAll({
+            where: {
+                categoria_principal: req.query.sortByCategory
+            },
+            attributes: [
+                'id',
+                'nome',
+                'endereco',
+                'uri_foto_restaurante',
+                [Sequelize.literal(`(6335*2*asin(sqrt(SIN(RADIANS((latitude-${req.params.lat})/2))*SIN(RADIANS((latitude-${req.params.lat})/2)) + (cos(radians(latitude)) * cos(radians(${req.params.lat})) * (sin(radians((longitude-${req.params.long})/2)) * sin(radians((longitude-${req.params.long})/2)))))))`), 'distance'],
+            ],
+            order: Sequelize.col('distance'),
+            having: Sequelize.literal(`distance <= ${req.query.max || 10}`)
+        })
+    }
+    else {
+        restaurantesList = await Restaurante.findAll({
+
+            attributes: [
+                'id',
+                'nome',
+                'endereco',
+                'uri_foto_restaurante',
+                [Sequelize.literal(`(6335*2*asin(sqrt(SIN(RADIANS((latitude-${req.params.lat})/2))*SIN(RADIANS((latitude-${req.params.lat})/2)) + (cos(radians(latitude)) * cos(radians(${req.params.lat})) * (sin(radians((longitude-${req.params.long})/2)) * sin(radians((longitude-${req.params.long})/2)))))))`), 'distance'],
+            ],
+            order: Sequelize.col('distance'),
+            having: Sequelize.literal(`distance <= ${req.query.max || 10}`)
+        })
+    }
+    res.json(restaurantesList)
 })
+
+app.get('/pedidos', async (req, res)=>{
+    const pedidosUsuario = await Pedido.findAll({
+        where: {
+            usuarioId: req.query.id
+        },
+        include: [{
+            model: Restaurante,
+            required: false,
+            attributes: ['nome', 'endereco', 'uri_foto_restaurante']
+        }]
+    })
+    res.json(pedidosUsuario)
+})
+
 app.listen(3333)
