@@ -25,7 +25,7 @@ const Usuario = db.define('Usuarios', {
     },
     uri_foto_usuario: {
         type: DataTypes.STRING,
-        allowNull: false
+        allowNull: true
     }
 })
 export { Usuario }

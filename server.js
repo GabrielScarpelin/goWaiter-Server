@@ -1,4 +1,4 @@
-String.prototype.haveLetter = function (findLetter){ //Adicionada ao prototipo do objeto da string para ter um método universal de verificar se aquela letra contém determinada char
+String.prototype.haveLetter = function (findLetter){ //Adicionada ao prototipo do objeto da string para ter um método universal de verificar se aquela palavra contém determinada char
     for (let i = 0; i < this.length; i++){
         if (this.charAt(i) === findLetter) return true
     }
@@ -80,7 +80,14 @@ app.post('/signin', async (request, response, next)=>{
 
 const uploadUser = multer({ storage: storageUser })
 app.post('/cadastrarUsuario', uploadUser.single('foto_usuario'), async (req, res)=>{
-    const fileName = req.file.filename
+    const fileName = (()=>{
+        try {
+            return req.file.filename
+        }
+        catch(e){
+            return null
+        }
+    })()
     const hasUser = await Usuario.findAll({
         where: {
             email: req.body.email
@@ -114,7 +121,15 @@ app.post('/cadastrarUsuario', uploadUser.single('foto_usuario'), async (req, res
 const upload = multer({ storage: storageRestaurante })
 
 app.post('/cadastrarRestaurante',upload.single('foto_restaurante'), async (req, res)=>{
-    const fileName = req.file.filename
+    const fileName = (()=>{
+        try {
+            const file = req.file.filename
+            return file
+        }
+        catch(e){
+            return null
+        }
+    })()
     const enderecoUrlFormated = formatarEnderecoParaUrl(req.body.endereco)
     const url = `https://geocode.search.hereapi.com/v1/geocode?q=${enderecoUrlFormated}&apiKey=1rdJexgz_WchXIC95dii3eCEtl2sUAhnCK6pj3Z92dM`;
     const informacoesEndereco = await axios.get(url).then(response => response.data)
@@ -134,7 +149,9 @@ app.post('/cadastrarRestaurante',upload.single('foto_restaurante'), async (req, 
     res.json(restaurante)
 })
 
-
+app.get('/termosDeUso', (req, res)=>{
+    res.send('termo completo')
+})
 
 
 
@@ -150,6 +167,7 @@ app.get('/restaurantes/:lat,:long', async (req, res)=>{
                 'nome',
                 'endereco',
                 'uri_foto_restaurante',
+                'categoria_principal',
                 [Sequelize.literal(`(6335*2*asin(sqrt(SIN(RADIANS((latitude-${req.params.lat})/2))*SIN(RADIANS((latitude-${req.params.lat})/2)) + (cos(radians(latitude)) * cos(radians(${req.params.lat})) * (sin(radians((longitude-${req.params.long})/2)) * sin(radians((longitude-${req.params.long})/2)))))))`), 'distance'],
             ],
             order: Sequelize.col('distance'),
@@ -186,5 +204,50 @@ app.get('/pedidos', async (req, res)=>{
     })
     res.json(pedidosUsuario)
 })
-
+app.patch('/userName', async (req, res)=>{
+    const updateUsername = await Usuario.update({
+        nome: req.body.newUserName
+    }, {
+        where: {
+            id: req.body.id
+        }
+    })
+    res.json({sucess: updateUsername[0] === 1 ? true : false})
+})
+app.patch('/userEmail', async (req, res)=>{
+    console.log(req.body)
+    const updateEmail = await Usuario.update({
+        email: req.body.newEmail
+    }, {
+        where: {
+            id: req.body.id,
+            senha: req.body.senha
+        }
+    })
+    res.json({sucess: updateEmail[0] === 1 ? true : false})
+})
+app.patch('/userPhone', async (req, res)=>{
+    console.log(req.body)
+    const updateUserPhone = await Usuario.update({
+        telefone: req.body.newPhone
+    }, {
+        where: {
+            id: req.body.id,
+            senha: req.body.senha
+        }
+    })
+    res.json({sucess: updateUserPhone[0] === 1 ? true : false})
+})
+app.patch('/userPassword', async (req, res)=>{
+    console.log(req.body)
+    const updatePassword = await Usuario.update({
+        senha: req.body.newPassword
+    }, {
+        where: {
+            id: req.body.id,
+            senha: req.body.oldPassword
+        }
+    })
+    res.json({sucess: updatePassword[0] === 1 ? true : false})
+})
 app.listen(3333)
