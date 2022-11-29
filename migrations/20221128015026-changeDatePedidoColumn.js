@@ -9,8 +9,8 @@ module.exports = {
      * Example:
      * await queryInterface.createTable('users', { id: Sequelize.INTEGER });
      */
-    await queryInterface.addColumn('restaurantes', 'categoria_principal', {
-      type: Sequelize.STRING,
+    await queryInterface.changeColumn('pedidos', 'data_reservada', {
+      type: Sequelize.DATEONLY,
       allowNull: false
     })
   },
@@ -22,6 +22,9 @@ module.exports = {
      * Example:
      * await queryInterface.dropTable('users');
      */
-    await queryInterface.removeColumn('restaurante', 'categoria_principal')
+     await queryInterface.changeColumn('pedidos', 'data_reservada', {
+      type: Sequelize.DATE,
+      allowNull: false
+    })
   }
 };

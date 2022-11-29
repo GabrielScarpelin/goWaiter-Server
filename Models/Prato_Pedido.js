@@ -20,6 +20,10 @@ const Prato_Pedido = db.define('Pratos_pedidos', {
     preparar: {
         type: DataTypes.BOOLEAN,
         allowNull: false
+    },
+    observacao: {
+        type: DataTypes.STRING,
+        allowNull: true
     }
 })
 Pedido.hasMany(Prato_Pedido)

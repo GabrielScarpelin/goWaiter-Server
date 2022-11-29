@@ -14,23 +14,25 @@ const Pedido = db.define('Pedidos', {
         type: DataTypes.FLOAT(4, 2),
         allowNull: false
     },
-    hora_pedido: {
+    horario_reservado: {
         type: DataTypes.TIME,
         allowNull: false
     },
-    horario_reservado: {
-        type: DataTypes.DATE,
+    data_reservada: {
+        type: DataTypes.DATEONLY,
         allowNull: false
     },
     ativo: {
         type: DataTypes.BOOLEAN,
         allowNull: false
+    },
+    observacao: {
+        type: DataTypes.STRING,
+        allowNull: true
     }
 })
 Usuario.hasMany(Pedido)
 Pedido.belongsTo(Usuario)
 Restaurante.hasMany(Pedido)
 Pedido.belongsTo(Restaurante)
-Mesa.hasMany(Pedido)
-Pedido.belongsTo(Mesa)
 export { Pedido }

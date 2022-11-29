@@ -18,6 +18,34 @@ import axios from 'axios'
 import express, { json } from 'express'
 import multer from 'multer'
 import cors from 'cors'
+import {Mesa, Pedido, Prato_Pedido, Prato, Restaurante, Usuario} from './Models/index.js'
+import { Op, Sequelize, where } from 'sequelize'
+
+
+setInterval(async ()=>{
+    console.log('Limpando ativos...')
+    const data = new Date()
+    const pedidosInativos = await Pedido.findAll({
+        where: {
+            data_reservada: `${data.getFullYear()}-${data.getMonth() + 1}-28`,
+            horario_reservado: {
+                [Op.lte] : `${data.getHours() - 1 < 10 ? `0${data.getHours() - 1}`: data.getHours() - 1}:${data.getMinutes() < 10 ? `0${data.getMinutes()}`: data.getMinutes()}:00`
+            },
+            ativo: true
+        }
+    })
+    pedidosInativos.forEach((item)=>{
+        const numPedido = item.get().num_pedido
+        Pedido.update({
+            ativo: false
+        }, {
+            where: {
+                num_pedido: numPedido
+            }
+        })
+    })
+    
+}, 1800000)
 
 const storageUser = multer.diskStorage({
     destination: (req, file, cb)=>{
@@ -44,9 +72,6 @@ const storageRestaurante = multer.diskStorage({
     }
 })
 const app = express()
-
-import {Mesa, Pedido, Prato_Pedido, Prato, Restaurante, Usuario} from './Models/index.js'
-import { Op, Sequelize, where } from 'sequelize'
 
 app.use(express.json())
 app.use('/upload', express.static('./upload'))
@@ -143,10 +168,40 @@ app.post('/cadastrarRestaurante',upload.single('foto_restaurante'), async (req, 
         hora_abertura: `${req.body.hora_abertura}:${req.body.minuto_abertura}:00`,
         hora_fechar: `${req.body.hora_fechar}:${req.body.minuto_fechar}:00`,
         CEP,
-        uri_foto_restaurante: `/upload/restaurantes/${fileName}`,
-        categoria_principal: req.body.categoria
+        uri_foto_restaurante: `/upload/restaurantes/${fileName}`
     })
     res.json(restaurante)
+})
+
+app.post('/cadastrarReserva', async (req, res)=>{
+    console.log(req.body)
+    const pedido = await Pedido.create({
+        horario_reservado: req.body.paramsReserva.horario,
+        valor_pedido: req.body.paramsReserva.valor,
+        data_reservada: req.body.paramsReserva.data,
+        ativo: true,
+        observacao: req.body.paramsReserva.observacao,
+        UsuarioId: req.body.idUser,
+        RestauranteId: req.body.pratos[0].idRestaurante,
+    })
+    if (pedido) {
+        const pratos = []
+        let tamanhoPratos = 0
+        req.body.pratos.forEach(async (item)=>{
+            const prato = await Prato_Pedido.create({
+                quantidade: item.quantidade,
+                ingredientes_excluidos: item.ingredientes_excluidos,
+                preparar: false,
+                PedidoNumPedido: pedido.getDataValue('num_pedido'),
+                PratoId: item.PratoId,
+                observacao: item.observacao
+            })
+            tamanhoPratos = pratos.push(prato)
+        })
+        if (tamanhoPratos > 0){
+            res.json({sucess: true})
+        }
+    }
 })
 
 app.get('/termosDeUso', (req, res)=>{
@@ -204,6 +259,27 @@ app.get('/pedidos', async (req, res)=>{
     })
     res.json(pedidosUsuario)
 })
+app.get('/detailPedido', async (req, res)=>{
+    const pratosPedidosUsuario = await Prato_Pedido.findAll({
+        where: {
+            PedidoNumPedido: req.query.id
+        },
+        include: [{
+            model: Prato,
+            required: false,
+            attributes: ['nome', 'descricao', 'ingredientes']
+        }]
+    })
+    res.json(pratosPedidosUsuario)
+})
+app.get('/pratos/restaurante', async (req, res)=>{
+    const pratosRestaurante = await Prato.findAll({
+        where: {
+            RestauranteId: req.query.id
+        },
+    })
+    res.json(pratosRestaurante)
+})
 app.patch('/userName', async (req, res)=>{
     const updateUsername = await Usuario.update({
         nome: req.body.newUserName
@@ -215,7 +291,6 @@ app.patch('/userName', async (req, res)=>{
     res.json({sucess: updateUsername[0] === 1 ? true : false})
 })
 app.patch('/userEmail', async (req, res)=>{
-    console.log(req.body)
     const updateEmail = await Usuario.update({
         email: req.body.newEmail
     }, {
@@ -227,7 +302,6 @@ app.patch('/userEmail', async (req, res)=>{
     res.json({sucess: updateEmail[0] === 1 ? true : false})
 })
 app.patch('/userPhone', async (req, res)=>{
-    console.log(req.body)
     const updateUserPhone = await Usuario.update({
         telefone: req.body.newPhone
     }, {
@@ -239,7 +313,6 @@ app.patch('/userPhone', async (req, res)=>{
     res.json({sucess: updateUserPhone[0] === 1 ? true : false})
 })
 app.patch('/userPassword', async (req, res)=>{
-    console.log(req.body)
     const updatePassword = await Usuario.update({
         senha: req.body.newPassword
     }, {
@@ -249,5 +322,51 @@ app.patch('/userPassword', async (req, res)=>{
         }
     })
     res.json({sucess: updatePassword[0] === 1 ? true : false})
+})
+const uploadPrato = multer({ storage: storagePrato })
+app.post('/cadastrarPrato', uploadPrato.single('foto'),async (req, res)=>{
+    const fileName = (()=>{
+        try {
+            return req.file.filename
+        }
+        catch(e){
+            return null
+        }
+    })()
+    const PratoCreated  = await Prato.create({
+        nome: req.body.nome,
+        preco: req.body.preco,
+        descricao: req.body.desc,
+        tempo_preparo: req.body.tempo,
+        acompanhamentos: req.body.acompanhamento,
+        uri_foto_prato: `/upload/restaurantes/${fileName}`,
+        RestauranteId: req.body.restId,
+        ingredientes: req.body.ingredientes,
+        disponivel: true
+    })
+    if (PratoCreated){
+        res.json(['sucess'])
+    }
+})
+
+
+app.delete('/cancelarPedido', async (req, res)=>{
+    const id = req.body.idPedido
+    const deletedPratos = await Prato_Pedido.destroy({
+        where: {
+            PedidoNumPedido: id
+        }
+    })
+    const deletedPedido = await Pedido.destroy({
+        where: {
+            num_pedido: id
+        }
+    })
+    if (deletedPedido && deletedPratos){
+        res.json({sucess: true})
+    }
+    else {
+        res.json({sucess: false})
+    }
 })
 app.listen(3333)

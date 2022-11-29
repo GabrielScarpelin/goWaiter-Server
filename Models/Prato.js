@@ -32,11 +32,11 @@ const Prato = db.define('Pratos', {
         type: DataTypes.JSON,
         allowNull: true
     },
-    categoria: {
-        type: DataTypes.STRING,
-        allowNull: true
-    },
     uri_foto_prato: {
+        type: DataTypes.STRING,
+        allowNull: false
+    },
+    nome: {
         type: DataTypes.STRING,
         allowNull: false
     }
